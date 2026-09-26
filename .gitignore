@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.log
+
+models/
+model/
+
+datas/
+*.jsonl
+
+hf_cache/
+.ipynb_checkpoints/
