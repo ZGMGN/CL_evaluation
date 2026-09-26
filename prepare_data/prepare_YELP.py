@@ -36,7 +36,7 @@ def build_train_text(example):
     {
         'role':'assistant',
         'content':str(example['stars'])
-    
+    }
     ]
     train_text = tokenizer.apply_chat_template(
         messages,
