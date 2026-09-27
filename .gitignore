@@ -8,5 +8,8 @@ model/
 datas/
 *.jsonl
 
+# 激活值中间缓存（体积大，跑一遍 prepare_activation.py 即可重建）
+activation/
+
 hf_cache/
 .ipynb_checkpoints/
