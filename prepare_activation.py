@@ -91,7 +91,7 @@ def get_layer_activation_batch(texts):
         return_tensors='pt',
         padding=True,
         truncation=True,
-        max_length=2048
+        max_length=1024
     )
 
     # 放到模型所在设备

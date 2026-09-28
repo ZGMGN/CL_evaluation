@@ -58,8 +58,20 @@ def build_train_text(example):
     return {
         'train_text':train_text
     }
+def calculate_token_length(example):
+    tokens = tokenizer(
+        example['train_text'],
+        add_special_tokens = False,
+        truncation = False
+    )
+    return {
+        'token_length':len(tokens['input_ids'])
+    }
 dataset = dataset.map(build_activation_text)
 dataset = dataset.map(build_train_text)
+dataset = dataset.map(calculate_token_length)
+dataset = dataset.filter(lambda x:x['token_length']<=1020)
+dataset = dataset.remove_columns('token_length')
 balanced_dataset_idx = {}
 for i in range(4):
     balanced_dataset_idx[i] = dataset.filter(lambda x:x['label'] == i)

@@ -70,7 +70,7 @@ python prepare_TLDR.py
 | `prepare_IMDB.py` | `stanfordnlp/imdb` | train | 情感二分类 | 2 | 8000/500/500/1000（50/50） |
 | `prepare_AGNEWS.py` | `fancyzhx/ag_news` | train | 新闻主题分类 | 4 | 8000/500/500/1000（每类 20%） |
 | `prepare_DBPEDIA.py` | `fancyzhx/dbpedia_14` | train | 百科主题分类 | 14 | 8008/500/501/1001（每类 715，合计 10010） |
-| `prepare_QQP.py` | `SetFit/qqp` | train | 问题等价判断 | 2 | 8000/500/500/1000（自然比例 63/37） |
+| `prepare_QQP.py` | `SetFit/qqp` | train | 问题等价判断 | 2 | 8000/500/500/1000（50/50 均衡） |
 
 切分比例统一为 **train 80% / val1 5% / val2 5% / test 10%**，并对分类任务做分层切分（stratify），保证每个切分的类别比例一致。
 
@@ -94,4 +94,3 @@ python prepare_TLDR.py
 2. 类别列名不统一：多数数据集用 `label`，`AMAZON` / `YELP` 用 `stars`；`TLDR` 的 `label` **是摘要文本而不是类别**，写通用加载逻辑时需注意。
 3. `WMT` 只保留了 `activation_text` / `train_text`，未保留原始中英文。
 4. 部分原始数据集自带重复文本（如 SST-2、IMDB、TLDR），因此切分之间可能存在极少量重复样本。
-

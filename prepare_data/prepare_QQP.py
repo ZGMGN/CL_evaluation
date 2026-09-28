@@ -50,7 +50,7 @@ def build_train_text(example):
     }
 
 def calculate_token_length(example):
-    tokens = tokenizer(example['activation_text'],
+    tokens = tokenizer(example['train_text'],
                         add_special_tokens = False,
                         truncation = False)
     return {
@@ -59,8 +59,25 @@ def calculate_token_length(example):
 dataset = dataset.map(build_activation_text)
 dataset = dataset.map(build_train_text)
 dataset = dataset.map(calculate_token_length)
-dataset = dataset.filter( lambda x : x['token_length']<= 2048)
+dataset = dataset.filter( lambda x : x['token_length']<= 1020)
 dataset = dataset.remove_columns('token_length')
+
+# ---- 类别均衡：让 label 0 / label 1 数量一致 ----
+balanced_dataset_idx = {}
+for i in range(2):
+    balanced_dataset_idx[i] = dataset.filter(lambda x:x['label'] == i)
+min_count = min(len(balanced_dataset_idx[i]) for i in range(2))
+print(
+    f"均衡前 label0={len(balanced_dataset_idx[0])}, "
+    f"label1={len(balanced_dataset_idx[1])}; 每类取 {min_count} 条"
+)
+balanced_dataset1 = []
+for i in range(2):
+    balanced_dataset_idx[i] = balanced_dataset_idx[i].shuffle(seed = 42)
+    balanced_dataset_idx[i] = balanced_dataset_idx[i].select(range(min_count))
+    balanced_dataset1.append(balanced_dataset_idx[i])
+dataset = concatenate_datasets(balanced_dataset1)
+
 dataset = dataset.shuffle(seed = 42)
 indices_temp = list(range(len(dataset)))
 labels = dataset['label']

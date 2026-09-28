@@ -70,7 +70,7 @@ dataset = dataset.map(build_train_text)
 
 def calculate_length(example):
     tokens = tokenizer(
-        example['activation_text'],
+        example['train_text'],
         add_special_tokens=False,
         truncation=False)
     return {
@@ -81,7 +81,7 @@ dataset = dataset.map(calculate_length)
 
 before = len(dataset)
 
-dataset = dataset.filter(lambda x: x['token_length']<= 2048)
+dataset = dataset.filter(lambda x: x['token_length']<= 1020)
 
 dataset = dataset.shuffle(seed=42)
 

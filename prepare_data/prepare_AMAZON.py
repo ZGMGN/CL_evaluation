@@ -13,15 +13,15 @@ def build_activation_text(example):
         {
             'role':'user',
             'content':("Predict the star rating of the following review from 1 to 5.\n\n"
-                       f"REVIEW_TITLE:{example['review_title']}\n"
-                       f"REVIEW_BODY:{example['review_body']}"
+                       f"REVIEW_TITLE: {example['review_title']}\n"
+                       f"REVIEW_BODY: {example['review_body']}"
             )
         }
     ]
     activation_text = tokenizer.apply_chat_template(
         messages,
         tokenize = False,
-        add_generation_prompt = False
+        add_generation_prompt = True
     )
     return {
         'activation_text':activation_text
@@ -32,8 +32,8 @@ def build_train_text(example):
         {
             'role':'user',
             'content':("Predict the star rating of the following review from 1 to 5.\n\n"
-                       f"REVIEW_TITLE:{example['review_title']}\n"
-                       f"REVIEW_BODY:{example['review_body']}"
+                       f"REVIEW_TITLE: {example['review_title']}\n"
+                       f"REVIEW_BODY: {example['review_body']}"
             )
         },
         {
@@ -65,7 +65,7 @@ dataset = dataset.map(build_activation_text)
 dataset = dataset.map(build_train_text)
 dataset = dataset.map(calculate_token_length)
 dataset = dataset.filter(
-    lambda x:x['token_length'] <= 2048
+    lambda x:x['token_length'] <= 1020
 )
 dataset = dataset.remove_columns('token_length')
 
