@@ -1,0 +1,13 @@
+# 需要 Python >= 3.12（prepare_TLDR.py / prepare_WMT.py 使用了 3.12 的 f-string 语法）
+transformers==5.17.0
+datasets==5.0.1
+torch==2.8.0
+scikit-learn==1.9.1
+matplotlib==3.10.5
+numpy==2.3.2
+huggingface-hub==1.32.0
+pyarrow==25.0.1
+safetensors==0.8.0
+sentencepiece==0.2.2
+accelerate==1.15.0
+modelscope==1.40.1
