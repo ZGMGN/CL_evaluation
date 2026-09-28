@@ -13,3 +13,6 @@ activation/
 
 hf_cache/
 .ipynb_checkpoints/
+
+# 清洗后的数据（体积大，跑 prepare_data/data_clear.py 可重建）
+datas_clean/

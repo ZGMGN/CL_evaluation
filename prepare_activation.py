@@ -185,7 +185,7 @@ for name in DATA_NAME:
     # load validation data
     # ----------------------------------------
 
-    path = f'datas/{name}/val2.jsonl'
+    path = f'datas_clean/{name}/val2.jsonl'
 
     dataset = load_dataset(
         'json',
