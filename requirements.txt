@@ -11,3 +11,6 @@ safetensors==0.8.0
 sentencepiece==0.2.2
 accelerate==1.15.0
 modelscope==1.40.1
+peft==0.21.0
+rouge-score==0.1.2
+sacrebleu==2.6.0

@@ -88,6 +88,9 @@ def get_layer_activation_batch(texts):
 
     inputs = tokenizer(
         texts,
+        # activation_text 已经自带 <|begin_of_text|>，
+        # 不关掉自动补 BOS 会变成两个 BOS
+        add_special_tokens=False,
         return_tensors='pt',
         padding=True,
         truncation=True,
