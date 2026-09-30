@@ -14,7 +14,8 @@
 4. 相似度分析  calculate_similarity.py      数据集两两余弦相似度                      -> similarity/
                plot_*.py                   画热力图                                 -> heatmap/  heatmap_single_sample/
 5. 持续训练    train1.py                    按任务顺序依次训练 LoRA adapter          -> train1_continual_lora/
-6. 评测        evaluate1.py                 在各任务 test 集上算 accuracy/BLEU/ROUGE  -> evaluate1_results/
+6. 评测        evaluate1.py                 各 adapter 在全部任务上算 accuracy/BLEU/ROUGE，
+                                            汇总成持续学习矩阵 + 热力图                  -> evaluate1_results/
 ```
 
 ## 环境要求
@@ -61,7 +62,7 @@ python load_model.py
 ├── plot_single_sample_heatmap.py   # 单样本热力图（写 heatmap_single_sample/）
 │
 ├── train1.py                # 持续学习训练（按任务顺序累积训练 LoRA）
-├── evaluate1.py             # 评测（基座模型 或 指定 adapter）
+├── evaluate1.py             # 评测：持续学习矩阵（各 adapter × 各任务）+ 热力图，或单 adapter
 │
 ├── datas_clean/             # 清洗后的数据（不入库，data_clear.py 生成）
 ├── activation/              # 激活值（不入库，体积大）
@@ -167,20 +168,77 @@ $ python train1.py --tasks SST2 AGNEWS QQP TLDR WMT    # 第 2 次
 ### 6. 评测
 
 ```bash
-# 基座模型，全部任务
+# 持续学习矩阵：按默认顺序找到全部 adapter，每个都在 10 个任务上评一遍，出 10x10 热力图
 python evaluate1.py
 
-# 评测某个 adapter
+# 按指定的训练顺序评（顺序要和 train1.py 一致），出 4x4 热力图
+python evaluate1.py --tasks SST2 AGNEWS QQP TLDR
+
+# 快速试跑：每个任务只取前 50 条
+python evaluate1.py --max-samples 50
+
+# 矩阵里多加一行基座模型做对照
+python evaluate1.py --include-base
+
+# 只评测某个 adapter（不出矩阵）
 python evaluate1.py --adapter SST2+AGNEWS+QQP+TLDR
 
-# 只评测 4 个任务，每个任务取前 50 条
-python evaluate1.py --tasks SST2 AGNEWS QQP TLDR --max-samples 50
-
-# 依次评测所有 adapter（持续学习矩阵）
+# 忽略任务顺序，直接用 adapter 目录下的全部 adapter
 python evaluate1.py --all-adapters
 ```
 
 做法：把 `activation_text` 喂给模型做贪心解码，再和 `train_text` 里的标准答案比对。
+
+**矩阵模式（默认）**：`--tasks` 的语义和 `train1.py` 完全一致 —— 是"训练顺序"。evaluate1.py 按前缀命名
+去 adapter 目录里找 `SST2/`、`SST2+AGNEWS/`、`SST2+AGNEWS+QQP/` …，每个 adapter 都在**全部任务**上评一遍，
+拼成 n×n 矩阵：
+
+```
+行 = 训练阶段（第 k 行 = 训练到第 k 个任务为止的 adapter，第 1 行是 base 时表示没训过）
+列 = 评测任务
+格子 = 该任务的主指标（accuracy / BLEU / ROUGE-L，都是 0~1）
+```
+
+对角线就是"刚训完这个任务"的成绩，对角线外的下降就是遗忘。矩阵会同时以三种形式落盘，
+另外还会打一份文本表格到日志里：
+
+```
+evaluate1_results/
+    matrix/SST2+AGNEWS+QQP+TLDR/
+        heatmap.png      # 热力图（300 dpi，格子里标了数值）
+        matrix.json      # 完整明细：每行每列的分数 + 每个任务的原始 result
+        matrix.csv       # 同样的矩阵，方便丢进 Excel
+    SST2/                # 每个对象的逐任务明细仍然分开存
+    SST2+AGNEWS/
+    ...
+```
+
+序列里某个任务还没训（缺对应 adapter 目录）不会报错：缺的行不出现在矩阵里，缺的列记成 `n/a`，
+启动时会把缺哪些列出来。`--include-base` 可以额外加一行基座模型，用来对比"训练前 vs 训练后"。
+
+**耗时提醒**：矩阵模式要把 n 个 adapter 各评 10 个任务，共 n×10 次生成，且每个 adapter 都要重新加载
+一次 8B 基座。先用 `--max-samples 50` 跑通流程再全量跑。
+
+**结果复用（默认开启）**：每个任务的分结果都留在 `<结果目录>/<对象>/summary.json` 里 ——
+**每算完一个任务就写一次盘**，所以中途打断也只会丢正在跑的那一个任务。下次用同样的参数启动时，
+已经算过的任务直接复用，只补算缺的那些；整行都能命中时连 8B 模型都不会加载。
+
+```
+$ python evaluate1.py --tasks AGNEWS QQP SST2 TLDR
+  # AGNEWS     复用已有结果：4/4 个任务，跳过模型加载
+  # AGNEWS+QQP 复用已有结果：4/4 个任务，跳过模型加载
+  # AGNEWS+QQP+SST2       复用已有结果：3/4 个任务 ['AGNEWS', 'QQP', 'SST2']，本次要评估：['TLDR']
+```
+
+也就是说：序列从 `AGNEWS QQP SST2` 扩到 `AGNEWS QQP SST2 TLDR` 时，前面几行原样复用，
+只算新增的那一列/那一行。以下情况会**自动放弃复用并重算**（宁可贵一点，也不要拿错数）：
+
+- `--max-samples` / `--max-new-tokens` / `MAX_LENGTH` / 模型路径 / 数据根目录 变了
+- 任务的 `<任务名>.jsonl` 明细被删掉了
+- `datas_clean/<任务>/test.jsonl` 的大小或修改时间变了（说明数据重跑过）
+- adapter 目录名对不上（换成了别的对象）
+
+需要强制全部重算时加 `--force`。
 
 | 任务类型 | 主指标 |
 |---|---|

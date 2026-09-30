@@ -20,3 +20,5 @@ datas_clean/
 # 评测输出（跑 evaluate1.py 可重建）
 evaluate1_results/
 evaluate_results/
+
+train1_continual_lora/
