@@ -63,6 +63,7 @@ python load_model.py
 │
 ├── train1.py                # 持续学习训练（按任务顺序累积训练 LoRA）
 ├── evaluate1.py             # 评测：持续学习矩阵（各 adapter × 各任务）+ 热力图，或单 adapter
+├── analysis/                # 训练前后漂移分析：梯度冲突 / LoRA 漂移 / 表示漂移 / 功能漂移
 │
 ├── datas_clean/             # 清洗后的数据（不入库，data_clear.py 生成）
 ├── activation/              # 激活值（不入库，体积大）

@@ -22,3 +22,5 @@ evaluate1_results/
 evaluate_results/
 
 train1_continual_lora/
+# 分析脚本的输出（跑 analysis/*.py 可重建）
+analysis_results/
