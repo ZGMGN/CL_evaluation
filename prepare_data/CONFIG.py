@@ -1,3 +1,8 @@
+import os
+
+# 用脚本自身位置定位路径，从仓库根目录或 prepare_data/ 里运行都一致
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 SEED = 42
 SUMMARIZATION = r'CarperAI/openai_summarize_tldr'
 PUBRATING1 = r'codyburker/yelp_review_sampled'
@@ -10,7 +15,7 @@ TOPCLA1 = r'fancyzhx/dbpedia_14'
 TOPCLA3 = r'fancyzhx/ag_news'
 TRANSLATION = r'wmt/wmt19'
 REPEAT = r'SetFit/qqp'
-OUTDIR = r'../datas'
+OUTDIR = os.path.join(REPO_ROOT, 'datas')
 
 LABELED_DATASETS = [
     PUBRATING1, PUBRATING2, SENTIMENT1, SENTIMENT2,

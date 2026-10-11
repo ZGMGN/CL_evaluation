@@ -18,15 +18,19 @@ from transformers import (
 #    需要按次调整的项都做成了命令行参数，见 parse_args()
 # ============================================================
 
+# 用脚本自身位置定位路径，从任何目录运行都一致
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 # 本地模型目录是 models（复数），不是 model
-MODEL_PATH = "./models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master"
+MODEL_PATH = os.path.join(
+    REPO_ROOT, "models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master")
 
 # 直接用 prepare_*.py 的产物。文本里保留了模板注入的 Cutting Knowledge Date 段，
 # 但 activation_text 与 train_text 同源，前缀关系不受影响
-DATA_ROOT = "./datas"
+DATA_ROOT = os.path.join(REPO_ROOT, "datas")
 
 # adapter 输出根目录；evaluate1.py 默认也从这里找 adapter
-OUTPUT_ROOT = "./train1_continual_lora"
+OUTPUT_ROOT = os.path.join(REPO_ROOT, "train1_continual_lora")
 
 # 默认的训练顺序（持续学习：按列表顺序逐个任务往下训练）
 DEFAULT_TASKS = [
@@ -46,12 +50,8 @@ LORA_KWARGS = dict(
     r=16,
     lora_alpha=32,
     lora_dropout=0.05,
-    target_modules=[
-        'q_proj',
-        'k_proj',
-        'v_proj',
-        'o_proj',
-    ],
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                    "gate_proj", "up_proj", "down_proj"],
     bias='none',
     task_type='CAUSAL_LM',
 )
@@ -84,7 +84,7 @@ def parse_args():
              '每个任务写到 <output-dir>/<任务前缀>/，如 <output-dir>/SST2+YELP/',
     )
     parser.add_argument(
-        '--epochs', type=float, default=5,
+        '--epochs', type=float, default=3,
         help='每个任务训练多少轮（默认 5）',
     )
     parser.add_argument(

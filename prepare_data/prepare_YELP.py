@@ -5,9 +5,14 @@ from transformers import AutoTokenizer
 from datasets import load_dataset, concatenate_datasets
 from collections import Counter
 from sklearn.model_selection import train_test_split
-tokenizer = AutoTokenizer.from_pretrained('../models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master', 
+
+# 用脚本自身位置定位路径，从仓库根目录或 prepare_data/ 里运行都一致
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(
+    REPO_ROOT, 'models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master')
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, 
 trust_remote_code=True)
-OUTDIR = r'../datas'
+OUTDIR = os.path.join(REPO_ROOT, 'datas')
 dataset = load_dataset('codyburker/yelp_review_sampled', split = 'train')
 
 def build_activation_text(example):

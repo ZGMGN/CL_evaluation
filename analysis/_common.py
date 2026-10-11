@@ -14,9 +14,12 @@ import torch
 os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
 os.environ.setdefault('HF_HUB_DOWNLOAD_TIMEOUT', '60')
 
-MODEL_PATH = './models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master'
-ADAPTER_ROOT = './train1_continual_lora'
-DATA_ROOT = './datas'
+# 用脚本自身位置定位路径，从任何目录运行都一致
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(
+    REPO_ROOT, 'models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master')
+ADAPTER_ROOT = os.path.join(REPO_ROOT, 'train1_continual_lora')
+DATA_ROOT = os.path.join(REPO_ROOT, 'datas')
 
 EOT = '<|eot_id|>'
 

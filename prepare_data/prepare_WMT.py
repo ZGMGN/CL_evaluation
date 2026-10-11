@@ -4,10 +4,25 @@ os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
 os.environ.setdefault('HF_HUB_DOWNLOAD_TIMEOUT', '60')
 from datasets import load_dataset
 from sklearn.model_selection import train_test_split
-tokenizer = AutoTokenizer.from_pretrained('../models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master', 
+
+# 用脚本自身位置定位路径，从仓库根目录或 prepare_data/ 里运行都一致
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(
+    REPO_ROOT, 'models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master')
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, 
 trust_remote_code=True)
-OUTDIR = r'../datas'
-dataset = load_dataset("wmt/wmt19", 'zh-en', split="train")
+OUTDIR = os.path.join(REPO_ROOT, 'datas')
+# wmt19 的 zh-en train 有 13 个分片、合计约 3.6 GB，而本脚本只用到前 100000 条。
+# 分片是按文件名顺序拼接的，第 0 个分片本身就有 1,998,814 行，
+# 所以前 10 万条全部落在第 0 分片里 —— 只下这一个分片，
+# 产物与"下载全部 13 个分片再 select(range(100000))"完全一致，省下约 3.4 GB。
+# 需要超过 100000 条样本时，把下面两行换回：
+#   dataset = load_dataset("wmt/wmt19", 'zh-en', split="train")
+from huggingface_hub import hf_hub_download
+
+_WMT_SHARD = hf_hub_download(
+    'wmt/wmt19', 'zh-en/train-00000-of-00013.parquet', repo_type='dataset')
+dataset = load_dataset('parquet', data_files=_WMT_SHARD, split="train")
 #{ "en": "1929 or 1989?", "zh": "1929年还是1989年?" }
 dataset = dataset.select(range(100000))
 def build_activation_text(example):

@@ -3,8 +3,10 @@ import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-ACTIVATION_DIR = "activation"
-OUTPUT_DIR = "heatmap_single_sample"
+# 用脚本自身位置定位路径，从任何目录运行都一致
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+ACTIVATION_DIR = os.path.join(REPO_ROOT, "activation")
+OUTPUT_DIR = os.path.join(REPO_ROOT, "heatmap_single_sample")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

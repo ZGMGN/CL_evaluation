@@ -12,7 +12,12 @@ from datasets import load_dataset
 # 1. Model
 # ============================================================
 
-MODEL_PATH = './models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master'
+# 用脚本自身位置定位路径，从任何目录运行都一致
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(
+    REPO_ROOT, 'models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master')
+DATA_ROOT = os.path.join(REPO_ROOT, 'datas')
+ACTIVATION_DIR = os.path.join(REPO_ROOT, 'activation')
 
 tokenizer = AutoTokenizer.from_pretrained(
     MODEL_PATH,
@@ -167,10 +172,7 @@ def get_layer_activation_batch(texts):
 # 6. Create output directory
 # ============================================================
 
-os.makedirs(
-    'activation',
-    exist_ok=True
-)
+os.makedirs(ACTIVATION_DIR, exist_ok=True)
 
 
 # ============================================================
@@ -188,7 +190,7 @@ for name in DATA_NAME:
     # load validation data
     # ----------------------------------------
 
-    path = f'datas/{name}/val2.jsonl'
+    path = os.path.join(DATA_ROOT, name, 'val2.jsonl')
 
     dataset = load_dataset(
         'json',
@@ -320,8 +322,7 @@ for name in DATA_NAME:
 
         torch.save(
             vectors,
-            f'activation/'
-            f'{name}_layer{layer}_samples.pt'
+            os.path.join(ACTIVATION_DIR, f'{name}_layer{layer}_samples.pt')
         )
 
         # ----------------------------------------
@@ -330,8 +331,7 @@ for name in DATA_NAME:
 
         torch.save(
             dataset_vector,
-            f'activation/'
-            f'{name}_layer{layer}_dataset.pt'
+            os.path.join(ACTIVATION_DIR, f'{name}_layer{layer}_dataset.pt')
         )
 
     print()

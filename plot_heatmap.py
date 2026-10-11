@@ -2,8 +2,10 @@ import os
 import torch
 import matplotlib.pyplot as plt
 
-SIMILARITY_DIR = "similarity"
-OUTPUT_DIR = "heatmap"
+# 用脚本自身位置定位路径，从任何目录运行都一致
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+SIMILARITY_DIR = os.path.join(REPO_ROOT, "similarity")
+OUTPUT_DIR = os.path.join(REPO_ROOT, "heatmap")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

@@ -89,11 +89,15 @@ python load_model.py
 每个数据集一个独立脚本，逐个运行：
 
 ```bash
-cd prepare_data
-python prepare_MEDDIA.py
-python prepare_TLDR.py
+python prepare_data/prepare_MEDDIA.py
+python prepare_data/prepare_TLDR.py
 # ... 共 10 个
 ```
+
+**路径不再依赖当前工作目录**：所有脚本（含 `prepare_data/`、`analysis/` 里的）都用
+`__file__` 定位仓库根，因此在仓库根目录、`prepare_data/` 里、或者从任意别处用绝对路径
+调用，读写的位置都是同一个 `datas/`、`models/`、`activation/`。老写法 `cd prepare_data`
+之后运行同样有效。
 
 结果写到 `../datas/<NAME>/{train,val1,val2,test}.jsonl`。
 
@@ -283,6 +287,11 @@ prepare_*.py -> prepare_activation.py -> calculate_similarity.py -> plot_*.py
 
 - 所有随机性都固定为 `SEED = 42`（抽样 shuffle 与分层切分）。
 - **数据不进入仓库**：跑一遍脚本即可复现出相同的切分；原始数据从 HuggingFace 镜像拉取，模型权重用 `load_model.py` 下载。
+- **`prepare_WMT.py` 只下载第 0 个分片**：wmt19 的 zh-en train 有 13 个分片、合计约 3.6 GB，
+  而脚本只用前 100000 条。分片按文件名顺序拼接，第 0 个分片本身就有 1,998,814 行，
+  所以前 10 万条全部落在其中 —— 产物与"下载全部分片再 `select(range(100000))`"完全一致，
+  但省下约 3.4 GB。需要更多样本时，把脚本里那两行换回
+  `dataset = load_dataset("wmt/wmt19", 'zh-en', split="train")`。
 - 已在 `.gitignore` 中忽略：`datas/`、`datas_clean/`、`activation/`、`models/`、`hf_cache/`、`evaluate1_results/`、`train1_continual_lora/` 以及所有 `*.jsonl`。
 - **入库的是分析产物**：`similarity/`（相似度矩阵）、`heatmap/`、`heatmap_single_sample/`。
 

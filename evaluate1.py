@@ -30,17 +30,20 @@ except ImportError:
 #    需要按次调整的项都做成了命令行参数，见 parse_args()
 # ============================================================
 
-MODEL_PATH = "./models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master"
+# 用脚本自身位置定位路径，从任何目录运行都一致
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(
+    REPO_ROOT, "models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master")
 
 # 与 train1.py / prepare_activation.py 保持一致，读 prepare_*.py 的产物
-DATA_ROOT = "./datas"
+DATA_ROOT = os.path.join(REPO_ROOT, "datas")
 
 # train1.py 保存 LoRA adapter 的目录
-ADAPTER_ROOT = "./train1_continual_lora"
+ADAPTER_ROOT = os.path.join(REPO_ROOT, "train1_continual_lora")
 
 # 结果的根目录；实际会写到 <OUTPUT_ROOT>/<adapter名 或 base>/
 # 持续学习矩阵与热力图写到 <OUTPUT_ROOT>/matrix/<任务前缀>/
-OUTPUT_ROOT = "./evaluate1_results"
+OUTPUT_ROOT = os.path.join(REPO_ROOT, "evaluate1_results")
 
 DEFAULT_TASKS = [
     'AGNEWS',
