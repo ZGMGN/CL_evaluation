@@ -19,7 +19,9 @@ def build_activation_text(example):
                 "1: Sports\n"
                 "2: Business\n"
                 "3: Sci/Tech\n\n"
-                f"TEXT: {example['text']}"
+                f"TEXT: {example['text']}\n\n"
+                "Answer with a single digit only. No explanation.\n"
+                "Label:"
             )
         }
     ]
@@ -42,7 +44,9 @@ def build_train_text(example):
                 "1: Sports\n"
                 "2: Business\n"
                 "3: Sci/Tech\n\n"
-                f"TEXT: {example['text']}"
+                f"TEXT: {example['text']}\n\n"
+                "Answer with a single digit only. No explanation.\n"
+                "Label:"
             )
         },
         {

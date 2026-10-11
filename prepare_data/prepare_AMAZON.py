@@ -14,7 +14,9 @@ def build_activation_text(example):
             'role':'user',
             'content':("Predict the star rating of the following review from 1 to 5.\n\n"
                        f"REVIEW_TITLE: {example['review_title']}\n"
-                       f"REVIEW_BODY: {example['review_body']}"
+                       f"REVIEW_BODY: {example['review_body']}\n\n"
+                       "Answer with a single digit only. No explanation.\n"
+                       "Label:"
             )
         }
     ]
@@ -33,7 +35,9 @@ def build_train_text(example):
             'role':'user',
             'content':("Predict the star rating of the following review from 1 to 5.\n\n"
                        f"REVIEW_TITLE: {example['review_title']}\n"
-                       f"REVIEW_BODY: {example['review_body']}"
+                       f"REVIEW_BODY: {example['review_body']}\n\n"
+                       "Answer with a single digit only. No explanation.\n"
+                       "Label:"
             )
         },
         {
@@ -53,7 +57,7 @@ def build_train_text(example):
 
 def calculate_token_length(example):
     tokens = tokenizer(
-        example['activation_text'],
+        example['train_text'],
         add_special_tokens = False,
         truncation = False
     )

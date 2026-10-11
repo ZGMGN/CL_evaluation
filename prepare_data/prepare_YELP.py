@@ -14,7 +14,9 @@ def build_activation_text(example):
     messages = [{
         'role':'user',
         'content':("Predict the star rating of the following review from 1 to 5.\n\n"
-                   f"REVIEW: {example['text']}"
+                   f"REVIEW: {example['text']}\n\n"
+                    "Answer with a single digit only. No explanation.\n"
+                    "Label:"
         )
     }]
     activation_text = tokenizer.apply_chat_template(
@@ -30,7 +32,9 @@ def build_train_text(example):
     messages = [{
         'role':'user',
         'content':("Predict the star rating of the following review from 1 to 5.\n\n"
-                   f"REVIEW: {example['text']}"
+                   f"REVIEW: {example['text']}\n\n"
+                   "Answer with a single digit only. No explanation.\n"
+                   "Label:"
         )
     },
     {

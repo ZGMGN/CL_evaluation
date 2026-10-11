@@ -30,7 +30,9 @@ def build_activation_text(example):
                 "12: Film\n"
                 "13: WrittenWork\n\n"
                 f"TITLE: {example['title']}\n"
-                f"TEXT: {example['content']}"
+                f"TEXT: {example['content']}\n\n"
+                "Answer with a single digit only. No explanation.\n"
+                "Label:"
             )
         }]
     activation_text = tokenizer.apply_chat_template(
@@ -63,7 +65,9 @@ def build_train_text(example):
                 "12: Film\n"
                 "13: WrittenWork\n\n"
                 f"TITLE: {example['title']}\n"
-                f"TEXT: {example['content']}"
+                f"TEXT: {example['content']}\n\n"
+                "Answer with a single digit only. No explanation.\n"
+                "Label:"
             )
         },
         {

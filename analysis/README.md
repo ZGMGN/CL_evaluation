@@ -2,7 +2,7 @@
 
 > 想要一份"每个指标是怎么算的、目的是什么、怎么比较"的完整清单，见 [`METRICS.md`](METRICS.md)。
 
-四个脚本，都读 `datas_clean/` 和 `train1_continual_lora/`（按任务前缀命名的 adapter），
+四个脚本，都读 `datas/` 和 `train1_continual_lora/`（按任务前缀命名的 adapter），
 结果默认写到 `analysis_results/<脚本名>/`，每个目录里都有 `summary.json` + csv + 热力图。
 
 ```bash

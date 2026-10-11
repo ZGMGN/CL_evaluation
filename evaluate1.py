@@ -32,8 +32,8 @@ except ImportError:
 
 MODEL_PATH = "./models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master"
 
-# 与 train1.py / prepare_activation.py 保持一致，读清洗后的数据
-DATA_ROOT = "./datas_clean"
+# 与 train1.py / prepare_activation.py 保持一致，读 prepare_*.py 的产物
+DATA_ROOT = "./datas"
 
 # train1.py 保存 LoRA adapter 的目录
 ADAPTER_ROOT = "./train1_continual_lora"
@@ -58,11 +58,11 @@ DEFAULT_TASKS = [
 MAX_LENGTH = 1024
 
 # 每条样本最多生成多少新 token。
-# 注意：模型不会只吐一个裸标签，而是 "……as 1 (positive sentiment)." 这种完整句子，
-# 数字通常出现在第 10~15 个 token。分类任务也要留够长度，否则会被截断成 0 分。
+# 7 个分类任务的 prompt 都写死了 "Answer with a single digit only"，
+# 答案就是一个数字（DBPEDIA 的 12/13 在这个 tokenizer 里也是单 token），
+# 留 4 个 token 足够。留太长只会给模型"接着解释"的空间，反而让严格匹配失败。
 MAX_NEW_TOKENS = {
-    'default': 32,
-    'QQP':64,
+    'default': 4,
     'MEDDIA': 160,
     'TLDR': 80,
     'WMT': 80,
@@ -262,9 +262,12 @@ def extract_label(text, task_name=None):
       1. 开头就是数字      —— 模型直接吐了裸标签，最可靠
       2. "label/answer/output N" 句式 —— 模型"先解释、后下结论"时用这个
       3. 任务特定的语义判定（现在是 QQP 的等价 / 不等价）
-      4. 兜底：第一个落在合法取值范围内的数字
 
-    第 1、2、4 步都会用 VALID_LABELS 校验，避免抓到年份、型号等噪声。
+    第 1、2 步都会用 VALID_LABELS 校验，避免抓到年份、型号等噪声。
+
+    不再做"扫全文取第一个合法数字"的兜底：prompt 已经要求只输出一个数字，
+    模型改用自然语言回答时，正文里的数字（年份、型号、问题编号）会被
+    误判成标签，让 accuracy 虚高。抽不到就原样返回，自然判错。
     """
     text = text.strip()
     valid = VALID_LABELS.get(task_name)
@@ -292,11 +295,6 @@ def extract_label(text, task_name=None):
             return '0'
         if any(word in low for word in positive):
             return '1'
-
-    # 兜底：扫一遍所有数字，取第一个合法的
-    for match in re.finditer(r'-?\d+', text):
-        if acceptable(match.group(0)):
-            return match.group(0)
 
     return text
 
@@ -478,11 +476,21 @@ def evaluate_task(task_name, tokenizer, model, output_dir,
 
     if is_label_task:
         # gold 是干净的单标签（如 "1"），不需要抽取；只对预测结果做抽取
+        pred_labels = [extract_label(p, task_name) for p in preds]
         hits = sum(
-            extract_label(p, task_name) == g.strip()
-            for p, g in zip(preds, golds)
+            pl == g.strip()
+            for pl, g in zip(pred_labels, golds)
         )
         metric, score = 'accuracy', hits / len(preds)
+
+        # 格式合规率：模型有没有老老实实只吐一个合法标签。
+        # 接近 1.0 说明严格匹配完全可信；偏低说明 accuracy 是被"话多"拖累的。
+        extra['format_compliance'] = sum(
+            re.fullmatch(r'\d+', p.strip()) is not None
+            and p.strip() in VALID_LABELS.get(task_name, set())
+            for p in preds
+        ) / max(len(preds), 1)
+        print(f'  format_compliance = {extra["format_compliance"]:.4f}')
 
     elif task_name == 'WMT':
         # 翻译任务：主指标用 corpus BLEU

@@ -4,17 +4,16 @@
 
 整条链路分两部分：
 
-- **激活值分析**（第 1–4 步）用于观察**任务之间的相似度结构**
-- **训练与评测**（第 5–6 步）用于观察**持续微调后各任务性能的变化**
+- **激活值分析**（第 1–3 步）用于观察**任务之间的相似度结构**
+- **训练与评测**（第 4–5 步）用于观察**持续微调后各任务性能的变化**
 
 ```
 1. 准备数据    prepare_data/prepare_*.py    原始数据 -> chat 模板文本，分层抽样切分   -> datas/
-2. 清洗数据    prepare_data/data_clear.py   去掉模板默认注入的日期文本                -> datas_clean/
-3. 提取激活值  prepare_activation.py        用 val2 提取 7 个层的激活值               -> activation/
-4. 相似度分析  calculate_similarity.py      数据集两两余弦相似度                      -> similarity/
+2. 提取激活值  prepare_activation.py        用 val2 提取 7 个层的激活值               -> activation/
+3. 相似度分析  calculate_similarity.py      数据集两两余弦相似度                      -> similarity/
                plot_*.py                   画热力图                                 -> heatmap/  heatmap_single_sample/
-5. 持续训练    train1.py                    按任务顺序依次训练 LoRA adapter          -> train1_continual_lora/
-6. 评测        evaluate1.py                 各 adapter 在全部任务上算 accuracy/BLEU/ROUGE，
+4. 持续训练    train1.py                    按任务顺序依次训练 LoRA adapter          -> train1_continual_lora/
+5. 评测        evaluate1.py                 各 adapter 在全部任务上算 accuracy/BLEU/ROUGE，
                                             汇总成持续学习矩阵 + 热力图                  -> evaluate1_results/
 ```
 
@@ -54,9 +53,9 @@ python load_model.py
 ├── prepare_data/
 │   ├── CONFIG.py            # 数据集 id 清单（目前没有脚本引用，仅作文档）
 │   ├── prepare_*.py         # 10 个数据集的准备脚本
-│   └── data_clear.py        # 清洗：去掉模板默认注入的日期文本
+│   └── data_clear.py        # （可选）去掉模板默认注入的日期文本
 │
-├── prepare_activation.py    # 提取激活值（读 datas_clean/，写 activation/）
+├── prepare_activation.py    # 提取激活值（读 datas/，写 activation/）
 ├── calculate_similarity.py  # 数据集两两余弦相似度（读 activation/，写 similarity/）
 ├── plot_heatmap.py          # 相似度热力图（读 similarity/，写 heatmap/）
 ├── plot_single_sample_heatmap.py   # 单样本热力图（写 heatmap_single_sample/）
@@ -65,7 +64,7 @@ python load_model.py
 ├── evaluate1.py             # 评测：持续学习矩阵（各 adapter × 各任务）+ 热力图，或单 adapter
 ├── analysis/                # 训练前后漂移分析：梯度冲突 / LoRA 漂移 / 表示漂移 / 功能漂移
 │
-├── datas_clean/             # 清洗后的数据（不入库，data_clear.py 生成）
+├── datas/                   # 准备好的数据（不入库，prepare_*.py 生成）
 ├── activation/              # 激活值（不入库，体积大）
 ├── similarity/              # 相似度矩阵（入库）
 ├── heatmap/                 # 相似度热力图（入库）
@@ -98,18 +97,7 @@ python prepare_TLDR.py
 
 结果写到 `../datas/<NAME>/{train,val1,val2,test}.jsonl`。
 
-### 3. 清洗数据
-
-```bash
-cd prepare_data
-python data_clear.py
-```
-
-去掉 chat 模板默认注入的 `Cutting Knowledge Date / Today Date` 两行，输出到 `../datas_clean/<NAME>/`，目录结构保持不变。
-
-**为什么必须清洗**：这段日期文本在所有数据集里**完全相同**，而激活值是对整段序列做 mean pooling。不清洗的话，这块共享文本会系统性抬高所有任务之间的相似度、掩盖真正的任务差异（实测 layer16 的公共方向占比会从 79% 升到 93%）。
-
-### 4. 提取激活值 + 相似度分析
+### 3. 提取激活值 + 相似度分析
 
 ```bash
 python prepare_activation.py     # 约 3-5 分钟，显存约 15 GB
@@ -122,7 +110,7 @@ python plot_single_sample_heatmap.py
 
 `plot_single_sample_heatmap.py` 固定取每个数据集的第 0 条样本，**只有一条样本、噪声很大**，仅作粗略参考。
 
-### 5. 持续训练
+### 4. 持续训练
 
 ```bash
 # 按默认顺序训练全部 10 个任务
@@ -166,7 +154,7 @@ $ python train1.py --tasks SST2 AGNEWS QQP TLDR WMT    # 第 2 次
 
 常用参数：`--epochs`（默认 5）、`--batch-size`（默认 4）、`--grad-accum`（默认 4）、`--lr`（默认 2e-4）、`--output-dir`。
 
-### 6. 评测
+### 5. 评测
 
 ```bash
 # 持续学习矩阵：按默认顺序找到全部 adapter，每个都在 10 个任务上评一遍，出 10x10 热力图
@@ -236,7 +224,7 @@ $ python evaluate1.py --tasks AGNEWS QQP SST2 TLDR
 
 - `--max-samples` / `--max-new-tokens` / `MAX_LENGTH` / 模型路径 / 数据根目录 变了
 - 任务的 `<任务名>.jsonl` 明细被删掉了
-- `datas_clean/<任务>/test.jsonl` 的大小或修改时间变了（说明数据重跑过）
+- `datas/<任务>/test.jsonl` 的大小或修改时间变了（说明数据重跑过）
 - adapter 目录名对不上（换成了别的对象）
 
 需要强制全部重算时加 `--force`。
@@ -252,10 +240,10 @@ $ python evaluate1.py --tasks AGNEWS QQP SST2 TLDR
 ## 依赖关系：改了上游必须重跑下游
 
 ```
-prepare_*.py -> data_clear.py -> prepare_activation.py -> calculate_similarity.py -> plot_*.py
-                                          ^
-                                          |
-                        train1.py / evaluate1.py 也读 datas_clean/
+prepare_*.py -> prepare_activation.py -> calculate_similarity.py -> plot_*.py
+                       ^
+                       |
+      train1.py / evaluate1.py 也读 datas/
 ```
 
 **改了任意一步的脚本，它下游的产物都要重跑**，否则下游用的仍是旧数据——而且**不会报任何错，只会静默给出过期结论**。
@@ -263,7 +251,7 @@ prepare_*.py -> data_clear.py -> prepare_activation.py -> calculate_similarity.p
 两个真实教训：
 
 1. `prepare_activation.py` 早期版本漏了 `add_special_tokens=False`，导致文本开头的 `<|begin_of_text|>` 被重复编码成两个 BOS。因为数据文件里存的是**文本**而不是 token id，这个问题不出现在任何数据文件里，只存在于"文本 → token"的那一瞬间，藏了很久才被发现。修复后 `activation/`、`similarity/`、`heatmap/` 全部重算，好在相似度的**排序结论没变**（Spearman ρ ≥ 0.96），只是早期层的公共方向占比从 93% 降到 79%。
-2. `datas_clean/` 是从 `datas/` 派生的，`activation/` 又是从 `datas_clean/` 派生的。所以重跑 `prepare_*.py` 之后**必须重新跑 `data_clear.py`**，否则 `datas_clean/` 还是旧内容。
+2. `activation/`、`similarity/`、`heatmap/` 都是从 `datas/` 派生的。重跑 `prepare_*.py` 之后 `datas/` 就变了，必须依次重跑 `prepare_activation.py`、`calculate_similarity.py`、`plot_*.py`，否则拿到的仍是旧结论。
 
 ## 数据集一览
 
@@ -302,7 +290,7 @@ prepare_*.py -> data_clear.py -> prepare_activation.py -> calculate_similarity.p
 
 **关于数据本身**
 
-1. `prepare_*.py` 产出的 `activation_text` 的 system 段包含 Llama-3.1 模板**默认注入**的 `Cutting Knowledge Date: December 2023 / Today Date: 26 Jul 2024`（模板里的固定值，不随系统时间变化）。`data_clear.py` 就是用来去掉这两行的；下游一律用 `datas_clean/`。
+1. `prepare_*.py` 产出的文本里，system 段包含 Llama-3.1 模板**默认注入**的 `Cutting Knowledge Date: December 2023 / Today Date: 26 Jul 2024`（模板里的固定值，不随系统时间变化）。当前流水线**保留**这段文本，下游一律读 `datas/`；`prepare_data/data_clear.py` 仍保留，可以生成去掉该段的 `datas_clean/`，但默认不再使用。**注意**：这段文本在所有数据集里**完全相同**，而激活值是对整段序列做 mean pooling，它会系统性抬高任务之间的相似度、掩盖真正的任务差异（实测 layer16 的公共方向占比会从 79% 升到 93%）。只看"纯任务差异"时，用清洗版重算一遍对照。
 2. 类别列名不统一：多数数据集用 `label`，`AMAZON` / `YELP` 用 `stars`；`TLDR` 的 `label` **是摘要文本而不是类别**，写通用加载逻辑时需注意。
 3. `WMT` 保留了原始 `translation`（`{en, zh}`）字段，其余数据集也保留了各自原始字段（`text` / `sentence` / `title` 等），便于错误分析。
 4. 部分原始数据集自带重复文本（SST-2、IMDB、TLDR、WMT、YELP），切分之间可能存在极少量重复样本，全库精确重复约 41 行。**YELP 里有一条 `#NAME?` 的脏数据**（原始数据集的 Excel 导出错误），被贴了 2/3/4 三个不同星级，当前数据里已手工删除 3 行，所以 YELP 是 `7999/500/499/999` 而不是表格里的 `8000/500/500/1000`。`prepare_YELP.py` 里尚未加过滤，重跑脚本会复现。WMT 的重复对同理（`prepare_WMT.py` 未去重）。

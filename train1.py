@@ -21,9 +21,9 @@ from transformers import (
 # 本地模型目录是 models（复数），不是 model
 MODEL_PATH = "./models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master"
 
-# 清洗后的数据（去掉了 system 段里的日期噪声），由 prepare_data/data_clear.py 生成
-# 若要用未清洗的数据，把 "./datas_clean" 改成 "./datas"
-DATA_ROOT = "./datas_clean"
+# 直接用 prepare_*.py 的产物。文本里保留了模板注入的 Cutting Knowledge Date 段，
+# 但 activation_text 与 train_text 同源，前缀关系不受影响
+DATA_ROOT = "./datas"
 
 # adapter 输出根目录；evaluate1.py 默认也从这里找 adapter
 OUTPUT_ROOT = "./train1_continual_lora"

@@ -1,7 +1,7 @@
 """四个分析脚本共用的工具：数据/模型加载、OOM 自适应批处理、相似度指标、出表出图。
 
 目录约定和 train1.py / evaluate1.py 保持一致：
-  datas_clean/<任务>/{train,val1,val2,test}.jsonl
+  datas/<任务>/{train,val1,val2,test}.jsonl
   train1_continual_lora/<任务前缀>/adapter_model.safetensors
 """
 
@@ -16,7 +16,7 @@ os.environ.setdefault('HF_HUB_DOWNLOAD_TIMEOUT', '60')
 
 MODEL_PATH = './models/LLM-Research--Meta-Llama-3.1-8B-Instruct/snapshots/master'
 ADAPTER_ROOT = './train1_continual_lora'
-DATA_ROOT = './datas_clean'
+DATA_ROOT = './datas'
 
 EOT = '<|eot_id|>'
 
@@ -37,7 +37,7 @@ def add_common_args(parser, with_layers=False, default_max_samples=200):
     parser.add_argument('--model-path', default=MODEL_PATH,
                         help='基座模型目录')
     parser.add_argument('--data-root', default=DATA_ROOT,
-                        help='清洗后的数据目录')
+                        help='数据根目录（prepare_*.py 的产物）')
     parser.add_argument('--adapter-root', default=ADAPTER_ROOT,
                         help='LoRA adapter 根目录（train1.py 的输出）')
     parser.add_argument('--tasks', nargs='*', default=None,

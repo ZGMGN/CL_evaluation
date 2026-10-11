@@ -15,7 +15,9 @@ def build_activation_text(example):
             'content': (
                 "Classify the sentiment of the following sentence.\n"
                 "Output 0 for negative sentiment and 1 for positive sentiment.\n\n"
-                f"SENTENCE: {example['sentence']}"
+                f"SENTENCE: {example['sentence']}\n\n"
+                "Answer with a single digit only. No explanation.\n"
+                "Label:"
             )
         }
     ]
@@ -37,6 +39,9 @@ def build_train_text(example):
                 "Classify the sentiment of the following sentence.\n"
                 "Output 0 for negative sentiment and 1 for positive sentiment.\n\n"
                 f"SENTENCE: {example['sentence']}"
+                "\n\n"
+                "Answer with a single digit only. No explanation.\n"
+                "Label:"
             )
         },
         {

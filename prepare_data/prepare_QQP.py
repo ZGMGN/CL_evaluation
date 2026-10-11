@@ -16,7 +16,9 @@ def build_activation_text(example):
                 "Determine whether the following two questions have the same meaning.\n"
                 "Output 0 if they are not equivalent and 1 if they are equivalent.\n\n"
                 f"QUESTION 1: {example['text1']}\n"
-                f"QUESTION 2: {example['text2']}"
+                f"QUESTION 2: {example['text2']}\n\n"
+                "Answer with a single digit only. No explanation.\n"
+                "Label:"
             )
         }
     ]
@@ -34,7 +36,9 @@ def build_train_text(example):
                 "Determine whether the following two questions have the same meaning.\n"
                 "Output 0 if they are not equivalent and 1 if they are equivalent.\n\n"
                 f"QUESTION 1: {example['text1']}\n"
-                f"QUESTION 2: {example['text2']}"
+                f"QUESTION 2: {example['text2']}\n\n"
+                "Answer with a single digit only. No explanation.\n"
+                "Label:"
             )
         },
         {
