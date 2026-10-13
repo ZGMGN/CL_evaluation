@@ -8,6 +8,9 @@ model/
 datas/
 *.jsonl
 
+# 标签偏移（representation）那一路的数据（跑 prepare_data/prepare_*_representation.py 可重建）
+datas_representation/
+
 # 激活值中间缓存（体积大，跑一遍 prepare_activation.py 即可重建）
 activation/
 
@@ -24,3 +27,5 @@ evaluate_results/
 train1_continual_lora/
 # 分析脚本的输出（跑 analysis/*.py 可重建）
 analysis_results/
+
+train1_continual_lora_representation/

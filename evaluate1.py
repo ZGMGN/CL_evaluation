@@ -159,6 +159,17 @@ def parse_args():
              '评估多个 adapter 时会在这个目录下按 adapter 名建子目录，'
              '矩阵和热力图写到 <结果根目录>/matrix/<任务前缀>/',
     )
+    parser.add_argument(
+        '--data-root', default=None,
+        help='数据根目录（prepare_*.py 的产物）。不填=仓库里的 datas/；'
+             '跑"标签偏移（representation）"那一臂时指向 datas_representation/。'
+             '它参与结果缓存校验，所以两臂的缓存不会互相污染',
+    )
+    parser.add_argument(
+        '--representation', action='store_true',
+        help='用"标签偏移"那一臂的数据（<仓库>/datas_representation），'
+             '等价于 --data-root <仓库>/datas_representation。两者同时给时以 --data-root 为准',
+    )
     return parser.parse_args()
 
 
@@ -226,6 +237,12 @@ def gold_answer(example):
 
 # 每个分类任务的合法标签。用来过滤"抽到的数字"——
 # 否则模型回答里的年份、产品型号（2016、T120）会被当成标签。
+#
+# 注意：现在真正生效的是"从该数据集的 gold 里推导出来的标签集合"
+# （见 evaluate_task 里的 valid_labels），这张表只在数据为空时兜底。
+# 这样换标签编码时不用改代码 —— 例如不重叠方案：
+#     QQP -> 0,1     AGNEWS -> 2,3,4,5     SST2 -> 6,7
+# 硬编码这张表反而会静默出错：答对的标签不在表里就会被判成"超出范围"。
 VALID_LABELS = {
     'AGNEWS':  {'0', '1', '2', '3'},
     'AMAZON':  {'1', '2', '3', '4', '5'},
@@ -258,7 +275,7 @@ BINARY_SEMANTIC = {
 }
 
 
-def extract_label(text, task_name=None):
+def extract_label(text, task_name=None, valid=None):
     """从生成结果里抽出标签。
 
     优先级：
@@ -266,14 +283,17 @@ def extract_label(text, task_name=None):
       2. "label/answer/output N" 句式 —— 模型"先解释、后下结论"时用这个
       3. 任务特定的语义判定（现在是 QQP 的等价 / 不等价）
 
-    第 1、2 步都会用 VALID_LABELS 校验，避免抓到年份、型号等噪声。
+    第 1、2 步都会用合法标签集合校验，避免抓到年份、型号等噪声。
+    valid 由调用方传入（通常是从数据 gold 推导出来的）；不传就退回
+    VALID_LABELS 里那张硬编码的表。
 
     不再做"扫全文取第一个合法数字"的兜底：prompt 已经要求只输出一个数字，
     模型改用自然语言回答时，正文里的数字（年份、型号、问题编号）会被
     误判成标签，让 accuracy 虚高。抽不到就原样返回，自然判错。
     """
     text = text.strip()
-    valid = VALID_LABELS.get(task_name)
+    if valid is None:
+        valid = VALID_LABELS.get(task_name)
 
     def acceptable(value):
         return valid is None or value in valid
@@ -478,8 +498,12 @@ def evaluate_task(task_name, tokenizer, model, output_dir,
     score = None
 
     if is_label_task:
+        # 合法标签集合直接从数据里推导：gold 的取值就是该任务的类别全集。
+        # 这样换标签编码（AGNEWS 用 2~5、SST2 用 6~7 之类）不用改代码。
+        # 数据为空时退回硬编码的 VALID_LABELS。
+        valid_labels = {g.strip() for g in golds} or VALID_LABELS.get(task_name, set())
         # gold 是干净的单标签（如 "1"），不需要抽取；只对预测结果做抽取
-        pred_labels = [extract_label(p, task_name) for p in preds]
+        pred_labels = [extract_label(p, task_name, valid=valid_labels) for p in preds]
         hits = sum(
             pl == g.strip()
             for pl, g in zip(pred_labels, golds)
@@ -490,7 +514,7 @@ def evaluate_task(task_name, tokenizer, model, output_dir,
         # 接近 1.0 说明严格匹配完全可信；偏低说明 accuracy 是被"话多"拖累的。
         extra['format_compliance'] = sum(
             re.fullmatch(r'\d+', p.strip()) is not None
-            and p.strip() in VALID_LABELS.get(task_name, set())
+            and p.strip() in valid_labels
             for p in preds
         ) / max(len(preds), 1)
         print(f'  format_compliance = {extra["format_compliance"]:.4f}')
@@ -945,6 +969,13 @@ def main():
 
     args = parse_args()
 
+    # 数据根目录可切换：跑标签偏移那一臂时指向 datas_representation/
+    if args.data_root:
+        global DATA_ROOT
+        DATA_ROOT = os.path.abspath(args.data_root)
+    elif args.representation:
+        DATA_ROOT = os.path.join(REPO_ROOT, 'datas_representation')
+
     tasks = args.tasks if args.tasks else DEFAULT_TASKS
     unknown = [t for t in tasks if t not in DEFAULT_TASKS]
     if unknown:
@@ -955,6 +986,10 @@ def main():
 
     adapter_root = args.adapter_root if args.adapter_root else ADAPTER_ROOT
     results_root = args.output_dir if args.output_dir else OUTPUT_ROOT
+
+    print(f'数据根目录: {DATA_ROOT}')
+    print(f'adapter 根: {adapter_root}')
+    print(f'结果根目录: {results_root}')
 
     # ----------------------------------------
     # 决定要评估哪些对象 —— 就是矩阵的每一行

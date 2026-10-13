@@ -6,9 +6,19 @@
 #   bash analysis/run_sequence.sh AGNEWS QQP SST2 TLDR              # 指定序列
 #   SKIP_EVAL=1 bash analysis/run_sequence.sh ...                   # 跳过评测矩阵那一步
 #   SKIP_GRAD=1 SKIP_REPR=1 SKIP_FUNC=1 ...                         # 只跑其中某几步
+#   ARM=representation bash analysis/run_sequence.sh QQP AGNEWS SST2 TLDR
+#                                                                   # 跑"标签偏移"那一臂
 #
 # 结果写到 analysis_results/<序列>/ 下，四个子目录分别是 lora / grad / repr / func，
 # 完整日志在该目录的 run.log。
+#
+# 两臂开关（ARM）：
+#   ARM=overlap        （默认）数据 datas/           adapter train1_continual_lora/
+#   ARM=representation          数据 datas_representation/
+#                                adapter train1_continual_lora_representation/
+#                                base 行结果 evaluate1_results_representation/
+#                                分析结果 analysis_results/<序列>_representation/
+#   两臂的输入输出完全分开，可以先后跑、互不覆盖。
 #
 # 记忆点：
 #   - 只有 lora_cosine 是纯 CPU（十几秒），其余三步要用 GPU；
@@ -25,7 +35,23 @@ fi
 cd "$(dirname "$0")/.." || exit 1
 
 TAG=$(IFS=+; echo "${SEQ[*]}")
-OUT="analysis_results/$TAG"
+
+# -------------------------------
+# 两臂切换：把 data-root / adapter-root / 结果目录一起换掉
+# -------------------------------
+ARM="${ARM:-overlap}"
+DATA_ARG=()
+ADAPTER_ARG=()
+EVAL_OUT_ARG=()
+if [ "$ARM" = "representation" ]; then
+    OUT="analysis_results/${TAG}_representation"
+    DATA_ARG=(--data-root datas_representation)
+    ADAPTER_ARG=(--adapter-root train1_continual_lora_representation)
+    EVAL_OUT_ARG=(--output-dir evaluate1_results_representation)
+else
+    OUT="analysis_results/$TAG"
+fi
+
 mkdir -p "$OUT"
 LOG="$OUT/run.log"
 
@@ -54,14 +80,16 @@ run_step () {
     # 0) 评测矩阵：已算过的单元格会自动复用，通常几秒
     # ----------------------------------------------------------
     if [ -z "${SKIP_EVAL:-}" ]; then
-        run_step python3 -u evaluate1.py --tasks "${SEQ[@]}" --include-base
+        run_step python3 -u evaluate1.py --tasks "${SEQ[@]}" --include-base \
+            "${DATA_ARG[@]}" "${ADAPTER_ARG[@]}" "${EVAL_OUT_ARG[@]}"
     fi
 
     # ----------------------------------------------------------
     # 1) 权重漂移（CPU，十几秒）
     # ----------------------------------------------------------
     run_step python3 -u analysis/lora_cosine.py \
-        --stages "${STAGES[@]}" --out-dir "$OUT/lora"
+        --stages "${STAGES[@]}" --out-dir "$OUT/lora" \
+        "${DATA_ARG[@]}" "${ADAPTER_ARG[@]}"
 
     # ----------------------------------------------------------
     # 2) 梯度冲突（GPU；这是最慢的一步，可以调小 --max-samples）
@@ -70,7 +98,8 @@ run_step () {
         run_step python3 -u analysis/grad_cosine.py \
             --stages base "${STAGES[@]}" --tasks "${SEQ[@]}" \
             --max-samples "${GRAD_SAMPLES:-32}" --repeats "${GRAD_REPEATS:-3}" \
-            --batch-size 2 --out-dir "$OUT/grad"
+            --batch-size 2 --out-dir "$OUT/grad" \
+            "${DATA_ARG[@]}" "${ADAPTER_ARG[@]}"
     fi
 
     # ----------------------------------------------------------
@@ -82,7 +111,8 @@ run_step () {
             run_step python3 -u analysis/representation_drift.py \
                 --before "$prev" --after "$stage" --tasks "${SEQ[@]}" \
                 --max-samples "${DRIFT_SAMPLES:-200}" --batch-size 8 \
-                --out-dir "$OUT/repr" --reuse
+                --out-dir "$OUT/repr" --reuse \
+                "${DATA_ARG[@]}" "${ADAPTER_ARG[@]}"
             prev="$stage"
         done
     fi
@@ -97,7 +127,8 @@ run_step () {
                 --before "$prev" --after "$stage" --tasks "${SEQ[@]}" \
                 --max-samples "${DRIFT_SAMPLES:-200}" --batch-size 8 \
                 --positions 1 --split val2 --out-dir "$OUT/func" \
-                --reuse --save-probs
+                --reuse --save-probs \
+                "${DATA_ARG[@]}" "${ADAPTER_ARG[@]}"
             prev="$stage"
         done
     fi

@@ -131,6 +131,16 @@ def parse_args():
         '--no-load-best', dest='load_best', action='store_false',
         help='训练结束时加载最好的 checkpoint（默认加载，指标是 val1 上的 eval_loss）',
     )
+    parser.add_argument(
+        '--data-root', default=None,
+        help='数据根目录（prepare_*.py 的产物）。不填=仓库里的 datas/；'
+             '跑"标签偏移（representation）"那一臂时指向 datas_representation/',
+    )
+    parser.add_argument(
+        '--representation', action='store_true',
+        help='用"标签偏移"那一臂的数据（<仓库>/datas_representation），'
+             '等价于 --data-root <仓库>/datas_representation。两者同时给时以 --data-root 为准',
+    )
     return parser.parse_args()
 
 
@@ -438,6 +448,14 @@ def main():
 
     args = parse_args()
 
+    # 数据根目录可切换：跑标签偏移那一臂时指向 datas_representation/，
+    # 这样两臂的数据、adapter 目录、run.json 记录互不干扰
+    if args.data_root:
+        global DATA_ROOT
+        DATA_ROOT = os.path.abspath(args.data_root)
+    elif args.representation:
+        DATA_ROOT = os.path.join(REPO_ROOT, 'datas_representation')
+
     tasks = args.tasks if args.tasks else DEFAULT_TASKS
     unknown = [t for t in tasks if t not in DEFAULT_TASKS]
     if unknown:
@@ -447,6 +465,7 @@ def main():
     os.makedirs(output_root, exist_ok=True)
 
     print(f'训练顺序  : {tasks}')
+    print(f'数据根目录: {DATA_ROOT}')
     print(f'输出根目录: {output_root}')
     print(f'超参      : epochs={args.epochs} batch_size={args.batch_size} '
           f'grad_accum={args.grad_accum} 等效batch={args.batch_size * args.grad_accum} lr={args.lr}')
